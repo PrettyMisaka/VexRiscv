@@ -55,7 +55,7 @@ case class MuraxConfig(coreFrequency : HertzNumber,
 object MuraxConfig{
   def default : MuraxConfig = default(false, false)
   def default(withXip : Boolean = false, bigEndian : Boolean = false) =  MuraxConfig(
-    coreFrequency         = 12 MHz,
+    coreFrequency         = 27 MHz,
     onChipRamSize         = 8 kB,
     onChipRamHexFile      = null,
     pipelineDBus          = true,
@@ -529,7 +529,8 @@ object MuraxWithRamInit{
 object Murax_arty{
   def main(args: Array[String]) {
     val hex = "src/main/c/murax/hello_world/build/hello_world.hex"
-    SpinalVerilog(Murax(MuraxConfig.default(false).copy(coreFrequency = 100 MHz,onChipRamSize = 32 kB, onChipRamHexFile = hex)))
+    // SpinalVerilog(Murax(MuraxConfig.default(false).copy(coreFrequency = 27 MHz,onChipRamSize = 32 kB, onChipRamHexFile = hex)))
+    SpinalVerilog(Murax(MuraxConfig.default.copy(coreFrequency = 27 MHz,onChipRamSize = 8 kB, onChipRamHexFile = hex)))
   }
 }
 

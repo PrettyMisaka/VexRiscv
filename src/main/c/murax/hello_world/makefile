@@ -1,7 +1,7 @@
 PROJ_NAME=hello_world
 DEBUG=no
 BENCH=no
-MULDIV=no
+MULDIV=yes
 
 SRCS = 	$(wildcard src/*.c) \
 		$(wildcard src/*.cpp)  \
@@ -16,17 +16,17 @@ LDSCRIPT = ./src/linker.ld
 
 #include ../../../resources/gcc.mk
 # Set it to yes if you are using the sifive precompiled GCC pack
-SIFIVE_GCC_PACK ?= yes
+# SIFIVE_GCC_PACK ?= yes
 
 ifeq ($(SIFIVE_GCC_PACK),yes)
 	RISCV_NAME ?= riscv64-unknown-elf
-	RISCV_PATH ?= /opt/riscv/
+	RISCV_PATH ?= /opt/riscv
 else
 	RISCV_NAME ?= riscv32-unknown-elf
 	ifeq ($(MULDIV),yes)
-		RISCV_PATH ?= /opt/riscv32im/
+		RISCV_PATH ?= /opt/rv32im
 	else
-		RISCV_PATH ?= /opt/riscv32i/
+		RISCV_PATH ?= /opt/rv32i
 	endif
 endif
 
@@ -38,6 +38,8 @@ endif
 ifeq ($(COMPRESSED),yes)
 	MARCH := $(MARCH)ac
 endif
+
+MARCH := $(MARCH)_zicsr 
 
 CFLAGS += -march=$(MARCH)  -mabi=$(MABI) -DNDEBUG
 LDFLAGS += -march=$(MARCH)  -mabi=$(MABI)
@@ -74,7 +76,8 @@ RISCV_OBJDUMP = $(RISCV_PATH)/bin/$(RISCV_NAME)-objdump
 RISCV_CC=$(RISCV_PATH)/bin/$(RISCV_NAME)-gcc
 
 CFLAGS +=  -MD -fstrict-volatile-bitfields -fno-strict-aliasing
-LDFLAGS +=  -nostdlib -lgcc -mcmodel=medany -nostartfiles -ffreestanding -Wl,-Bstatic,-T,$(LDSCRIPT),-Map,$(OBJDIR)/$(PROJ_NAME).map,--print-memory-usage
+# LDFLAGS +=  -nostdlib -lgcc -mcmodel=medany -nostartfiles -ffreestanding -Wl,-Bstatic,-T,$(LDSCRIPT),-Map,$(OBJDIR)/$(PROJ_NAME).map,--print-memory-usage
+LDFLAGS += -lgcc -mcmodel=medany -nostartfiles -ffreestanding -Wl,-Bstatic,-T,$(LDSCRIPT),-Map,$(OBJDIR)/$(PROJ_NAME).map,--print-memory-usage -Wl,--gc-sections 
 #LDFLAGS += -lgcc -lc -lg -nostdlib  -lgcc  -msave-restore    --strip-debug,
 
 OBJS := $(SRCS)
