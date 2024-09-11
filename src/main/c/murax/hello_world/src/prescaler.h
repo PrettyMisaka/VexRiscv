@@ -13,4 +13,8 @@ static void prescaler_init(Prescaler_Reg* reg){
 
 }
 
+static void prescaler_set(Prescaler_Reg* reg, uint16_t val){
+  reg->LIMIT = val;
+}
+
 #endif /* PRESCALERCTRL_H_ */

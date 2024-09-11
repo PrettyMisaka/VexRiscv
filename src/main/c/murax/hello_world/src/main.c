@@ -11,13 +11,22 @@ void delay(uint32_t loops){
 	}
 }
 
+void _timer_init(){
+	interruptCtrl_mask_set(TIMER_INTERRUPT,0x1);
+	prescaler_set(TIMER_PRESCALER,1000 - 1);
+	timer_limit_set(TIMER_A,27000 - 1);
+	timer_ticks_en(TIMER_A);
+    println("timer init success!");
+}
+
 void main() {
+    println("hello world tang primer 20k!");
 	UART->STATUS |= 0x2;
     GPIO_A->OUTPUT_ENABLE = 0x0000000F;
 	GPIO_A->OUTPUT = 0x00000001;
     const int nleds = 4;
 	const int nloops = 1000000;
-    println("hello world tang primer 20k!");
+	_timer_init();
     while(1){
     	for(unsigned int i=0;i<nleds-1;i++){
     		GPIO_A->OUTPUT = 1<<i;
@@ -32,7 +41,15 @@ void main() {
 
 void irqCallback(){
 
-	// uint32_t uart_statis = UART->STATUS;
+	if(interruptCtrl_pendins_get(TIMER_INTERRUPT)){
+		printhex(timer_value_get(TIMER_A));
+		interruptCtrl_clear(TIMER_INTERRUPT);
+		// timer_clear(TIMER_A);
+		println("enter timer irq success!");
+		return;
+	}
+
+	uint32_t uart_statis = UART->STATUS;
 
 	UART->STATUS &= ~0x2;
 
@@ -42,9 +59,9 @@ void irqCallback(){
 	// printhex(mcause);
 	// println(".");
 
-	// print("uart status value:0x");
-	// printhex(uart_statis);
-	// println(".");
+	print("uart status value:0x");
+	printhex(uart_statis);
+	println(".");
 
 	uint32_t rxbuf_len;
 
@@ -62,7 +79,7 @@ void irqCallback(){
 
 	rx_buf[i] = 0;
 
-	println(rx_buf);
+	print(rx_buf);
 	
 	UART->STATUS |= 0x2;
 }

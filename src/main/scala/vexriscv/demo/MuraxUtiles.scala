@@ -1,11 +1,13 @@
 package vexriscv.demo
 
+import vexriscv.mycore.Timer
+
 import java.nio.{ByteBuffer, ByteOrder}
 
 import spinal.core._
 import spinal.lib.bus.amba3.apb.{Apb3, Apb3Config, Apb3SlaveFactory}
 import spinal.lib.bus.misc.SizeMapping
-import spinal.lib.misc.{HexTools, InterruptCtrl, Prescaler, Timer}
+import spinal.lib.misc.{HexTools, InterruptCtrl, Prescaler}
 import spinal.lib._
 import spinal.lib.bus.simple._
 import vexriscv.plugin.{DBusSimpleBus, IBusSimpleBus}

@@ -9,7 +9,7 @@ import spinal.lib.com.jtag.Jtag
 import spinal.lib.com.spi.ddr.SpiXdrMaster
 import spinal.lib.com.uart._
 import spinal.lib.io.{InOutWrapper, TriStateArray}
-import spinal.lib.misc.{InterruptCtrl, Prescaler, Timer}
+import spinal.lib.misc.{InterruptCtrl, Prescaler}
 import spinal.lib.soc.pinsec.{PinsecTimerCtrl, PinsecTimerCtrlExternal}
 import vexriscv.plugin._
 import vexriscv.{VexRiscv, VexRiscvConfig, plugin}
