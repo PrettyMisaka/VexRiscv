@@ -3,9 +3,12 @@ DEBUG=no
 BENCH=no
 MULDIV=yes
 
-SRCS = 	$(wildcard src/*.c) \
-		$(wildcard src/*.cpp)  \
-		$(wildcard src/*.S)
+SRCS = 	$(wildcard src/*.c) 	\
+		$(wildcard src/*.cpp)  	\
+		$(wildcard src/*.S)		\
+		$(wildcard src/spi/*.c)  \
+		$(wildcard src/sd_ctl/*.c)  \
+		$(wildcard src/interrupt/*.c)	
 
 OBJDIR = build
 

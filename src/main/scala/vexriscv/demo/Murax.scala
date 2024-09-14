@@ -8,6 +8,7 @@ import spinal.lib.bus.simple.PipelinedMemoryBus
 import spinal.lib.com.jtag.Jtag
 import spinal.lib.com.spi.ddr.SpiXdrMaster
 import spinal.lib.com.uart._
+import spinal.lib.com.spi._
 import spinal.lib.io.{InOutWrapper, TriStateArray}
 import spinal.lib.misc.{InterruptCtrl, Prescaler}
 import spinal.lib.soc.pinsec.{PinsecTimerCtrl, PinsecTimerCtrlExternal}
@@ -42,6 +43,7 @@ case class MuraxConfig(coreFrequency : HertzNumber,
                        pipelineApbBridge  : Boolean,
                        gpioWidth          : Int,
                        uartCtrlConfig     : UartCtrlMemoryMappedConfig,
+                       spiMasterCtrlCfg   : SpiMasterCtrlMemoryMappedConfig,
                        xipConfig          : SpiXdrMasterCtrl.MemoryMappingParameters,
                        hardwareBreakpointCount : Int,
                        cpuPlugins         : ArrayBuffer[Plugin[VexRiscv]]){
@@ -132,6 +134,15 @@ object MuraxConfig{
       busCanWriteFrameConfig = false,
       txFifoDepth = 16,
       rxFifoDepth = 16
+    ),
+    spiMasterCtrlCfg = SpiMasterCtrlMemoryMappedConfig(
+      ctrlGenerics = SpiMasterCtrlGenerics(
+        ssWidth = 1, // 1 个 Slave Select 信号
+        timerWidth = 16, // 16 位定时器
+        dataWidth = 8 // 8 位数据宽度
+      ),
+      cmdFifoDepth = 32, // 命令 FIFO 队列深度
+      rspFifoDepth = 32 // 响应 FIFO 队列深度
     )
 
   )
@@ -167,6 +178,8 @@ case class Murax(config : MuraxConfig) extends Component{
     //Peripherals IO
     val gpioA = master(TriStateArray(gpioWidth bits))
     val uart = master(Uart())
+
+    val spi = master(SpiMaster(config.spiMasterCtrlCfg.ctrlGenerics.ssWidth))
 
     val xip = ifGen(genXip)(master(SpiXdrMaster(xipConfig.ctrl.spi)))
   }
@@ -294,6 +307,11 @@ case class Murax(config : MuraxConfig) extends Component{
     val timer = new MuraxApb3Timer()
     timerInterrupt setWhen(timer.io.interrupt)
     apbMapping += timer.io.apb     -> (0x20000, 4 kB)
+
+    val spi = new Apb3SpiMasterCtrl(spiMasterCtrlCfg)
+    spi.io.spi <> io.spi
+    externalInterrupt setWhen(spi.io.interrupt)
+    apbMapping += spi.io.apb     -> (0x30000, 4 kB)
 
     val xip = ifGen(genXip)(new Area{
       val ctrl = Apb3SpiXdrMasterCtrl(xipConfig)

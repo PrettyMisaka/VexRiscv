@@ -13,8 +13,9 @@ void delay(uint32_t loops){
 
 void _timer_init(){
 	interruptCtrl_mask_set(TIMER_INTERRUPT,0x1);
-	prescaler_set(TIMER_PRESCALER,1000 - 1);
-	timer_limit_set(TIMER_A,27000 - 1);
+	prescaler_set(TIMER_PRESCALER,27 - 1);
+	timer_limit_set(TIMER_A,1000 - 1);
+	timer_autoreload_en(TIMER_A);
 	timer_ticks_en(TIMER_A);
     println("timer init success!");
 }
@@ -27,6 +28,7 @@ void main() {
     const int nleds = 4;
 	const int nloops = 1000000;
 	_timer_init();
+	sd_card_init();
     while(1){
     	for(unsigned int i=0;i<nleds-1;i++){
     		GPIO_A->OUTPUT = 1<<i;
@@ -42,10 +44,11 @@ void main() {
 void irqCallback(){
 
 	if(interruptCtrl_pendins_get(TIMER_INTERRUPT)){
-		printhex(timer_value_get(TIMER_A));
 		interruptCtrl_clear(TIMER_INTERRUPT);
+		systick_1ms_flag = 1;
+		// printhex(timer_value_get(TIMER_A));
 		// timer_clear(TIMER_A);
-		println("enter timer irq success!");
+		// println("enter timer irq success!");
 		return;
 	}
 
