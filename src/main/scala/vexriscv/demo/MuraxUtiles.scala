@@ -81,6 +81,36 @@ case class MuraxPipelinedMemoryBusRam(onChipRamSize : BigInt, onChipRamHexFile :
 }
 
 
+case class MuraxPipelinedMemoryBusRom(onChipRomSize : BigInt, onChipRamBinFile : String, pipelinedMemoryBusConfig : PipelinedMemoryBusConfig, bigEndian : Boolean = false) extends Component{
+  val io = new Bundle{
+    val bus = slave(PipelinedMemoryBus(pipelinedMemoryBusConfig))
+  }
+
+  import java.nio.file.{Files, Paths}
+  val byteArray = Files.readAllBytes(Paths.get(onChipRamBinFile))
+  // val wordCount = (byteArray.length+3)/4
+  val wordCount = (byteArray.length+3)/4
+  val buffer = ByteBuffer.wrap(Files.readAllBytes(Paths.get(onChipRamBinFile))).order(ByteOrder.LITTLE_ENDIAN);
+  val onChipRomSizeByte = onChipRomSize/4
+  val wordArray = (0 until wordCount).map(i => {
+    val v = buffer.getInt
+    if(v < 0)  BigInt(v.toLong & 0xFFFFFFFFl) else  BigInt(v)
+  })++ (wordCount until onChipRomSizeByte.toInt).map(_ => BigInt(0))
+
+  val rom = Mem(Bits(32 bits), onChipRomSizeByte) initBigInt(wordArray)
+
+  io.bus.rsp.valid := RegNext(io.bus.cmd.fire && !io.bus.cmd.write) init(False)
+  io.bus.rsp.data := rom.readWriteSync(
+    address = (io.bus.cmd.address >> 2).resized,
+    data  = io.bus.cmd.data,
+    enable  = io.bus.cmd.valid,
+    write  = io.bus.cmd.write,
+    mask  = io.bus.cmd.mask
+  )
+  io.bus.cmd.ready := True
+
+}
+
 
 case class Apb3Rom(onChipRamBinFile : String) extends Component{
   import java.nio.file.{Files, Paths}

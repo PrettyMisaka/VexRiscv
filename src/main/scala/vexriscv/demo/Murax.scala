@@ -73,7 +73,8 @@ object MuraxConfig{
     hardwareBreakpointCount = if(withXip) 3 else 0,
     cpuPlugins = ArrayBuffer( //DebugPlugin added by the toplevel
       new IBusSimplePlugin(
-        resetVector = if(withXip) 0xF001E000l else 0x80000000l,
+        // resetVector = if(withXip) 0xF001E000l else 0x80000000l,
+        resetVector = 0x10000000l,
         cmdForkOnSecondStage = true,
         cmdForkPersistence = withXip, //Required by the Xip controller
         prediction = NONE,
@@ -280,6 +281,14 @@ case class Murax(config : MuraxConfig) extends Component{
       bigEndian = bigEndianDBus
     )
     mainBusMapping += ram.io.bus -> (0x80000000l, onChipRamSize)
+    
+    val rom = new MuraxPipelinedMemoryBusRom(
+      onChipRomSize = 1 kB,
+      onChipRamBinFile = "src/main/c/murax/bootrom/build/bootrom.bin",
+      pipelinedMemoryBusConfig = pipelinedMemoryBusConfig,
+      bigEndian = bigEndianDBus
+    )
+    mainBusMapping += rom.io.bus -> (0x10000000l, rom.onChipRomSize)
 
     val apbBridge = new PipelinedMemoryBusToApbBridge(
       apb3Config = Apb3Config(
@@ -548,7 +557,7 @@ object Murax_arty{
   def main(args: Array[String]) {
     val hex = "src/main/c/murax/hello_world/build/hello_world.hex"
     // SpinalVerilog(Murax(MuraxConfig.default(false).copy(coreFrequency = 27 MHz,onChipRamSize = 32 kB, onChipRamHexFile = hex)))
-    SpinalVerilog(Murax(MuraxConfig.default.copy(coreFrequency = 27 MHz,onChipRamSize = 8 kB, onChipRamHexFile = hex)))
+    SpinalVerilog(Murax(MuraxConfig.default.copy(coreFrequency = 27 MHz,onChipRamSize = 8 kB, onChipRamHexFile = null)))
   }
 }
 
