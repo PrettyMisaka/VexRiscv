@@ -315,6 +315,28 @@ object CsrPluginConfig{
     ucycleAccess   = CsrAccess.NONE,
     uinstretAccess = CsrAccess.NONE
   )
+  
+  def myConfig(mtvecInit : BigInt)  = CsrPluginConfig(
+    catchIllegalAccess = true,
+    mvendorid      = null,
+    marchid        = null,
+    mimpid         = null,
+    mhartid        = null,
+    misaExtensionsInit = 66,
+    misaAccess     = CsrAccess.READ_WRITE,
+    mtvecAccess    = CsrAccess.READ_WRITE,
+    mtvecInit      = mtvecInit,
+    mepcAccess     = CsrAccess.READ_WRITE,
+    mscratchGen    = false,
+    mcauseAccess   = CsrAccess.READ_ONLY,
+    mbadaddrAccess = CsrAccess.READ_WRITE,
+    mcycleAccess   = CsrAccess.READ_WRITE,
+    minstretAccess = CsrAccess.READ_WRITE,
+    ecallGen       = false,
+    wfiGenAsWait         = false,
+    ucycleAccess   = CsrAccess.NONE,
+    uinstretAccess = CsrAccess.NONE
+  )
 
   def secure(mtvecInit : BigInt) = CsrPluginConfig(
     catchIllegalAccess = true,

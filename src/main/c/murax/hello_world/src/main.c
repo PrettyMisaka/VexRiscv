@@ -4,6 +4,7 @@
 #include <stdarg.h>
 
 #include "murax.h"
+extern void trap_entry(void);
 
 void delay(uint32_t loops){
 	for(int i=0;i<loops;i++){
@@ -21,12 +22,13 @@ void _timer_init(){
 }
 
 void main() {
+	asm volatile("csrw mtvec, %0" : : "r" ((uint32_t)trap_entry));
     println("hello world tang primer 20k!");
 	UART->STATUS |= 0x2;
     GPIO_A->OUTPUT_ENABLE = 0x0000000F;
 	GPIO_A->OUTPUT = 0x00000001;
     const int nleds = 4;
-	const int nloops = 1000000;
+	const int nloops = 100000;
 	_timer_init();
 	sd_card_init();
     while(1){

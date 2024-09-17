@@ -88,7 +88,8 @@ object MuraxConfig{
         earlyInjection = false,
         bigEndian = bigEndian
       ),
-      new CsrPlugin(CsrPluginConfig.smallest(mtvecInit = if(withXip) 0xE0040020l else 0x80000020l)),
+      // new CsrPlugin(CsrPluginConfig.smallest(mtvecInit = if(withXip) 0xE0040020l else 0x80000020l)),
+      new CsrPlugin(CsrPluginConfig.myConfig(mtvecInit = if(withXip) 0xE0040020l else 0x80000020l)),
       new DecoderSimplePlugin(
         catchIllegalInstruction = false
       ),
