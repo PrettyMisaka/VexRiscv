@@ -9,6 +9,8 @@
 #include "gpio.h"
 #include "uart.h"
 
+#include "sd_ctl/sd_ctl.h"
+
 #include "kernel/kernel.h"
 
 #endif /* __MURAX_H__ */

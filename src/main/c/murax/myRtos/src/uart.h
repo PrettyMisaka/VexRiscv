@@ -3,6 +3,8 @@
 
 #include "const.h"
 
+static char hex_chars[] = "0123456789ABCDEF";
+
 typedef struct
 {
   volatile uint32_t DATA;				// 0x0
@@ -50,8 +52,12 @@ static void println(const char*str){
 	uart_write(UART,'\n');
 }
 
+static void printbyte(uint8_t val){
+	uart_write(UART,hex_chars[(val >> 4) & 0xF]);
+	uart_write(UART,hex_chars[val & 0xF]);
+}
+
 static void printhex(uint32_t val){
-	static char hex_chars[] = "0123456789ABCDEF";
 	static char str[8];
 
 	int i = 0;

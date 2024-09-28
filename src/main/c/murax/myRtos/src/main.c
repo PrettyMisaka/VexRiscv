@@ -45,6 +45,8 @@ _TASK_FUN uart_tx()
 }
 
 void main() {
+	sd_card_init();
+	
 	kernel_init();
 
     // println("hello world tang primer 20k!");
