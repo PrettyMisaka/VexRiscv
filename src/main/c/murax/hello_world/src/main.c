@@ -12,6 +12,43 @@ void delay(uint32_t loops){
 	}
 }
 
+void ddr3_reg_log()
+{
+	print(" ddr3 reg:0x");
+	printhex(*(uint32_t*)0x48000000);
+	print(",0x");
+	printhex(*(uint32_t*)0x48000004);
+	print(",0x");
+	printhex(*(uint32_t*)0x48000008);
+	print(",0x");
+	printhex(*(uint32_t*)0x4800000c);
+	print(",0x");
+	printhex(*(uint32_t*)0x48000010);
+	println("");
+}
+
+void get_ddr3_ram_data(uint32_t begin, uint32_t end)
+{
+	volatile uint32_t* ddr_base;
+	for(ddr_base = (uint32_t*)begin; (uint32_t)ddr_base < end;){
+		// if(*ddr_base != wr_val){
+			// print("error data!");
+			printhex((uint32_t)ddr_base);
+			print(":");
+			printhex(*ddr_base);
+
+			ddr3_reg_log();
+			// break;
+		// }
+		// wr_val += 4;
+		ddr_base += 1;
+		if(((uint32_t)ddr_base & 0x00FFFFFF) == 0x00000000){
+			print("current addr:");
+			printhex((uint32_t)ddr_base);
+		}
+	}
+}
+
 void _timer_init(){
 	interruptCtrl_mask_set(TIMER_INTERRUPT,0x1);
 	prescaler_set(TIMER_PRESCALER,27 - 1);
@@ -30,6 +67,122 @@ void main() {
     const int nleds = 4;
 	const int nloops = 100000;
 	_timer_init();
+
+	*(uint32_t*)0x40000000 = 0x40000000; //1
+	*(uint32_t*)0x40000004 = 0x40000004; //1
+	*(uint32_t*)0x40000008 = 0x40000008; //1
+	*(uint32_t*)0x4000000c = 0x4000000c; //1
+	print("read 0x40000000:");
+	printhex(*(uint32_t*)0x40000000); //4
+	print("read 0x40000004:");
+	printhex(*(uint32_t*)0x40000004); //4
+	print("read 0x40000008:");
+	printhex(*(uint32_t*)0x40000008); //4
+	print("read 0x4000000c:");
+	printhex(*(uint32_t*)0x4000000c); //4
+	println("");
+	ddr3_reg_log();
+	//flash
+	*(uint32_t*)0x40002000 = 0x40002000; //2 1
+	*(uint32_t*)0x40003000 = 0x40003000; //3 2 1
+	*(uint32_t*)0x40004000 = 0x40004000; //4 3 2
+	*(uint32_t*)0x40005000 = 0x40005000; //5 4 3
+
+	print("read 0x40000000:");
+	printhex(*(uint32_t*)0x40000000); //4
+	print("read 0x40000004:");
+	printhex(*(uint32_t*)0x40000004); //4
+	print("read 0x40000008:");
+	printhex(*(uint32_t*)0x40000008); //4
+	print("read 0x4000000c:");
+	printhex(*(uint32_t*)0x4000000c); //4
+	println("");
+	ddr3_reg_log();
+
+	// println("write data to 0x400007F0...");
+	// *(uint32_t*)0x400007F0 = 0x4F0007F0; //2 1
+	// *(uint32_t*)0x400007F4 = 0x4F0007F4; //2 1
+	// *(uint32_t*)0x400007F8 = 0x4F0007F8; //2 1
+	// *(uint32_t*)0x400007Fc = 0x4F0007Fc; //2 1
+	// ddr3_reg_log();
+	// //flash
+	// *(uint32_t*)0x40002000 = 0x40002000; //2 1
+	// *(uint32_t*)0x40003000 = 0x40003000; //3 2 1
+	// *(uint32_t*)0x40004000 = 0x40004000; //4 3 2
+	// *(uint32_t*)0x40005000 = 0x40005000; //5 4 3
+
+	// print("read 0x40000000:");
+	// printhex(*(uint32_t*)0x40000000); //4
+	// print("read 0x40000004:");
+	// printhex(*(uint32_t*)0x40000004); //4
+	// print("read 0x40000008:");
+	// printhex(*(uint32_t*)0x40000008); //4
+	// print("read 0x4000000c:");
+	// printhex(*(uint32_t*)0x4000000c); //4
+	// println("");
+	// ddr3_reg_log();
+
+	// while(1);
+
+	volatile uint32_t* ddr_base;
+	volatile uint32_t wr_val = 0x40000000;
+	// for(; (uint32_t)ddr_base < 0x41000000;){
+	//0x40000280 可以正常读写
+	//0x40000400 0x40000380有问题
+	//0x40000300 乱码 跑飞 对0x400007FX读写会使0x4000000X出现问题
+	for( ddr_base = (uint32_t*)0x40000000; (uint32_t)ddr_base < 0x48000000 ;){
+		*ddr_base = wr_val;
+		// *ddr_base = (((uint32_t)ddr_base & 0xfffffff0) == 0x400007F0)?wr_val|0x80000000:wr_val;
+		wr_val += 4;
+		ddr_base += 1;
+		if(((uint32_t)ddr_base & 0x00FFFFFF) == 0x00000000){
+			print(" ");
+			printhex((uint32_t)ddr_base);
+		}
+		// if((uint32_t)ddr_base == 0x400007F0){
+		// 	get_ddr3_ram_data(0x40000000, 0x40000010);
+		// }
+		// if((uint32_t)ddr_base == 0x400007F0 + 0x0080){
+		// 	print("\r\n");
+		// 	ddr3_reg_log();
+		// }
+		// if((uint32_t)ddr_base == 0x400007F0 + 0x0100){
+		// 	ddr3_reg_log();
+		// }
+		// if((uint32_t)ddr_base == 0x400007F0 + 0x0180){
+		// 	ddr3_reg_log();
+		// }
+		// if((uint32_t)ddr_base == 0x400007F0 + 0x200){
+		// 	get_ddr3_ram_data(0x40000000, 0x40000010);
+		// }
+	}
+	print("ddr3 module write done! checking \r\n");
+	wr_val = 0x40000000;
+	for( ddr_base = (uint32_t*)0x40000000; (uint32_t)ddr_base < 0x48000000 ;){
+		// *ddr_base = 0x1f;
+		if(*ddr_base != wr_val){
+			get_ddr3_ram_data((uint32_t)ddr_base, (uint32_t)ddr_base + 0x10);
+			break;
+		}
+		wr_val += 4;
+		ddr_base += 1;
+		if(((uint32_t)ddr_base & 0x00FFFFFF) == 0x00000000){
+			print(" ");
+			printhex((uint32_t)ddr_base);
+		}
+	}
+	if((uint32_t)ddr_base == 0x48000000)
+		print("ddr3 test 0x40000000 ~ 0x48000000 success!\r\n");
+	
+	get_ddr3_ram_data(0x40000000, 0x40000020);
+	get_ddr3_ram_data(0x40000100, 0x40000120);
+	get_ddr3_ram_data(0x40000800, 0x40000820);
+	get_ddr3_ram_data(0x40000900, 0x40000920);
+	get_ddr3_ram_data(0x40001000, 0x40001020);
+	get_ddr3_ram_data(0x40001100, 0x40001120);
+	get_ddr3_ram_data(0x40101000, 0x40101080);
+	get_ddr3_ram_data(0x43101000, 0x43101080);
+
 	sd_card_init();
     while(1){
     	for(unsigned int i=0;i<nleds-1;i++){

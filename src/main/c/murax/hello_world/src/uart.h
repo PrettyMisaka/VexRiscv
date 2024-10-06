@@ -47,7 +47,7 @@ static void print(const char*str){
 
 static void println(const char*str){
 	print(str);
-	uart_write(UART,'\n');
+	print("\r\n");
 }
 
 static void printhex(uint32_t val){

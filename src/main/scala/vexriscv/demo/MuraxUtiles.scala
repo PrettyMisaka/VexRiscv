@@ -111,6 +111,39 @@ case class MuraxPipelinedMemoryBusRom(onChipRomSize : BigInt, onChipRamBinFile :
 
 }
 
+class pipelinedMemoryBusIO(config : PipelinedMemoryBusConfig) extends Bundle {
+  val cmd = new Bundle{
+    val valid   = out(Bool())
+    val write   = out(Bool())
+    val ready   = in(Bool())
+    val address = out(UInt(config.addressWidth bits))
+    val data    = out(Bits(config.dataWidth bits))
+    val mask    = out(Bits(config.dataWidth / 8 bit))
+  }
+
+  val rsp = new Bundle {
+    val valid   = in(Bool())
+    val data    = in(Bits(config.dataWidth bits))
+  }
+}
+
+
+case class MuraxPipelinedMemoryBusDDr(pipelinedMemoryBusConfig : PipelinedMemoryBusConfig) extends Component{
+  val io = new Bundle{
+    val bus = slave(PipelinedMemoryBus(pipelinedMemoryBusConfig))
+    val ddr3IO = new pipelinedMemoryBusIO(pipelinedMemoryBusConfig)
+  }
+  
+  io.ddr3IO.cmd.write   := io.bus.cmd.payload.write
+  io.ddr3IO.cmd.address := io.bus.cmd.payload.address
+  io.ddr3IO.cmd.data    := io.bus.cmd.payload.data
+  io.ddr3IO.cmd.mask    := io.bus.cmd.payload.mask
+  io.ddr3IO.cmd.valid   := io.bus.cmd.valid
+  io.bus.cmd.ready      := io.ddr3IO.cmd.ready
+
+  io.bus.rsp.payload.data   := io.ddr3IO.rsp.data
+  io.bus.rsp.valid          := io.ddr3IO.rsp.valid
+}
 
 case class Apb3Rom(onChipRamBinFile : String) extends Component{
   import java.nio.file.{Files, Paths}

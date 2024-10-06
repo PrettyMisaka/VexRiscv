@@ -184,6 +184,8 @@ case class Murax(config : MuraxConfig) extends Component{
     val spi = master(SpiMaster(config.spiMasterCtrlCfg.ctrlGenerics.ssWidth))
 
     val xip = ifGen(genXip)(master(SpiXdrMaster(xipConfig.ctrl.spi)))
+
+    val ddr3RamIO = new pipelinedMemoryBusIO(PipelinedMemoryBusConfig(32,32))
   }
 
 
@@ -290,6 +292,17 @@ case class Murax(config : MuraxConfig) extends Component{
       bigEndian = bigEndianDBus
     )
     mainBusMapping += rom.io.bus -> (0x10000000l, rom.onChipRomSize)
+
+
+    // val ddr3RamBus = slave(PipelinedMemoryBus(
+    //   PipelinedMemoryBusConfig(
+    //     addressWidth = 32,
+    //     dataWidth = 32
+    //   ))
+    // )
+    val ddr3Ram = MuraxPipelinedMemoryBusDDr(pipelinedMemoryBusConfig = pipelinedMemoryBusConfig);
+    mainBusMapping += ddr3Ram.io.bus -> (0x40000000l, 129 MB)
+    io.ddr3RamIO <> ddr3Ram.io.ddr3IO
 
     val apbBridge = new PipelinedMemoryBusToApbBridge(
       apb3Config = Apb3Config(
@@ -558,7 +571,8 @@ object Murax_arty{
   def main(args: Array[String]) {
     val hex = "src/main/c/murax/hello_world/build/hello_world.hex"
     // SpinalVerilog(Murax(MuraxConfig.default(false).copy(coreFrequency = 27 MHz,onChipRamSize = 32 kB, onChipRamHexFile = hex)))
-    SpinalVerilog(Murax(MuraxConfig.default.copy(coreFrequency = 27 MHz,onChipRamSize = 8 kB, onChipRamHexFile = null)))
+    // coreFrequency对内核频率无影响 要在defaut里修改
+    SpinalVerilog(Murax(MuraxConfig.default.copy(onChipRamSize = 8 kB, onChipRamHexFile = null)))
   }
 }
 
