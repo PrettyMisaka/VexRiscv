@@ -65,7 +65,7 @@ static void printhex(uint32_t val){
     }
 
 	i--;
-	while(str[i] == '0')
+	while(str[i] == '0' && i != 0)
 		i--;
 	while(i >= 0){
 		uart_write(UART,str[i]);

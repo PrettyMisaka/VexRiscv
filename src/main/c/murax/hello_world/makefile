@@ -1,7 +1,7 @@
 PROJ_NAME=hello_world
 DEBUG=no
 BENCH=no
-MULDIV=yes
+MULDIV=no
 
 SRCS = 	$(wildcard src/*.c) 	\
 		$(wildcard src/*.cpp)  	\
