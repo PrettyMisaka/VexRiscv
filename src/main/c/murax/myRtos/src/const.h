@@ -13,7 +13,7 @@
 
 //kernel cfg
 #define KERNEL_TASK_STACK_MAX_SIZE 128
-#define KERNEL_MAX_TASK_COUNT 2
+#define KERNEL_MAX_TASK_COUNT 3
 #define KERNEL_TASK_NAME_MAXLEN 16
 
 extern void spin_lock();

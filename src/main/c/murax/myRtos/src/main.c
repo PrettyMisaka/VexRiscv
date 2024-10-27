@@ -44,6 +44,50 @@ _TASK_FUN uart_tx()
 	}
 }
 
+_TASK_FUN hdmi_flash()
+{
+	#define HDMI_H 1280l
+	#define HDMI_W 720l
+	#define HDMI_BLOCK 80
+	//					      384000
+	#define HDMI_FB_BASE (0x47c00000-160+20)
+
+	*(uint32_t*)0x48001000 = 0xffffffff; //2 1
+	volatile uint8_t cnt = 0;
+	volatile uint32_t color = 0xffffffff;
+	while(1)
+	{
+		uint32_t *p = (uint32_t*)(HDMI_FB_BASE+(20+(20*HDMI_H)<<2));
+		for(int i = 0; i < 680; i++){
+			for(int j = 0; j < 1240; j++){
+				*p = color;
+				p++;
+			}
+			p += (HDMI_H - 1240);
+		}			
+
+		switch (cnt%5)
+		{
+		case 0: color = 0xffffffff; break;
+		case 1: color = 0xff000000; break;
+		case 2: color = 0xff0000ff; break;
+		case 3: color = 0xff00ff00; break;
+		case 4: color = 0xffff0000; break;
+		default:
+			break;
+		}
+
+		print("cnt:");
+		printhex(cnt%5);
+		print(",color:0x");
+		printhex(color);
+		println("");
+		cnt++;
+
+		// task_delay(1000);
+	}
+}
+
 void main() {
 	sd_card_init();
 	
@@ -54,6 +98,8 @@ void main() {
 	kernel_task_init("uart",uart_tx);
 
 	kernel_task_init("led_t",led_blind);
+
+	kernel_task_init("hdmi",hdmi_flash);
 
 	kernel_start();
 
