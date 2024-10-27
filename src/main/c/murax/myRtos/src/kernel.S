@@ -181,6 +181,22 @@ task_save:
 # 自旋锁：禁用中断
 .global spin_lock
 spin_lock:
+    # 保存返回地址到栈上
+    addi    sp, sp, -4
+    sw      ra, 0(sp)
+    # 保存 a3 寄存器到栈上
+    addi    sp, sp, -4
+    sw      a3, 0(sp)
+    # 保存 a4 寄存器到栈上
+    addi    sp, sp, -4
+    sw      a4, 0(sp)
+    # 保存 t0 寄存器到栈上
+    addi    sp, sp, -4
+    sw      t0, 0(sp)
+    # 保存 t1 寄存器到栈上
+    addi    sp, sp, -4
+    sw      t1, 0(sp)
+
     csrr    a3, mstatus      # 读取 mstatus 寄存器的值到 a0
     andi    a4, a3, ~MSTATUS_MIE # 清除 MIE 位
     csrrw   zero, mstatus, a4 # 将修改后的值写回 mstatus 寄存器
@@ -204,6 +220,23 @@ spin_unlock:
     lui         t0,0xf0020
     addi	t0,t0,16 
     sw	        t1,4(t0)
+
+    # 恢复 t1 寄存器的值
+    lw      t1, 0(sp)
+    addi    sp, sp, 4
+    # 恢复 t0 寄存器的值
+    lw      t0, 0(sp)
+    addi    sp, sp, 4
+    # 恢复 a4 寄存器的值
+    lw      a4, 0(sp)
+    addi    sp, sp, 4
+    # 恢复 a3 寄存器的值
+    lw      a3, 0(sp)
+    addi    sp, sp, 4
+    # 恢复返回地址
+    lw      ra, 0(sp)
+    addi    sp, sp, 4
+
     ret
 
 .end

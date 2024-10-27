@@ -14,10 +14,10 @@ typedef enum task_status_e{
 
 typedef struct task_status {
     task_status_e_t status;
-    int delay_cnt;
+    volatile int delay_cnt;
     uint32_t timer_value_save;
     uint32_t id;
-    char *name;
+    char name[10];
 }task_status_t;
 
 /* task management */
@@ -71,7 +71,7 @@ void kernel_deinit(void);
 void task_delay(int ms);
 void kernel_task_status_log();
 // uint32_t kernel_task_init(task_info_t *info);
-uint32_t kernel_task_init( char *name, void(*fun)(void));
+uint32_t kernel_task_init(const char *name, void(*fun)(void));
 
 
 

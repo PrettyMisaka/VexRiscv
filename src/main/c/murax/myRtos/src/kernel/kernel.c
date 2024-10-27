@@ -8,9 +8,11 @@
 #include "../uart.h"
 #include "time.h"
 
+#define KERNEL_INFO_LOG 0
+
 static uint8_t __attribute__((aligned(16))) task_stack[KERNEL_MAX_TASK_COUNT][KERNEL_TASK_STACK_MAX_SIZE];
 
-static int task_cnt = 0;
+static volatile int task_cnt = 0;
 
 static task_t *task_when_none_task_ready = NULL;
 static task_t task_running;
@@ -22,6 +24,7 @@ const static task_t *ptask_queue_ready = &task_queue_ready;
 
 static task_t *task_pointer_list[KERNEL_MAX_TASK_COUNT] = {0};
 static task_t task_list[KERNEL_MAX_TASK_COUNT] = {0};
+static task_status_t *task_status_pointer_list[KERNEL_MAX_TASK_COUNT] = {0};
 static task_status_t task_status_list[KERNEL_MAX_TASK_COUNT] = {0};
 static context_t task_ctx_list[KERNEL_MAX_TASK_COUNT] = {0};
 
@@ -32,51 +35,72 @@ static volatile uint32_t systick_cnt = 0;
 
 extern void trap_vector(void);
 
+void kernel_task_info_log(task_t *p)
+{
+    print("name:");
+    print(p->status->name);
+    print(",id:");
+    printhex(p->status->id);
+    print(",addr:0x");
+    printhex((uint32_t)p);
+    print(",ctx addr:0x");
+    printhex((uint32_t)p->ctx);
+    print(",status addr:0x");
+    printhex((uint32_t)p->status);
+    print(",epc:0x");
+    printhex(p->ctx->epc);
+    print(",delay_cnt:");
+    printhex(p->status->delay_cnt);
+    println("");
+}
+
 void kernel_task_status_log()
 {
+#if KERNEL_INFO_LOG
     // return;
 
-    print("<<<");
+    println("<<< task status log >>>");
     task_t *p = &task_running;
-    print("run task:");
+    println("run task:");
     if(p->next)
-        printhex((uint32_t)p->next);
+        kernel_task_info_log(p->next);
     else
-        print("NULL");
+        println("NULL");
 
     p = &task_queue_ready;
-    print("ready task:");
+    println("ready task:");
     if(p->next){
         do{
-            printhex((uint32_t)p->next);
-            print("|");
+            kernel_task_info_log(p->next);
             p = p->next;
         }while(p->next);
     }
     else
-        print("NULL");
+        println("NULL");
 
     p = &task_queue_delay;
     print("delay task:");
     if(p->next){
         do{
-            printhex((uint32_t)p->next);
-            print("|");
+            kernel_task_info_log(p->next);
             p = p->next;
         }while(p->next);
     }
     else
-        print("NULL");
+        println("NULL");
 
-    print(">>>");
+#endif
 }
 
 void kernel_init()
 {
     for(int i =0; i < KERNEL_MAX_TASK_COUNT; i++){
         task_pointer_list[i] = &task_list[i];
+        task_status_pointer_list[i] = &task_status_list[i];
         printhex((uint32_t)task_pointer_list[i]);
         print("|");
+        printhex((uint32_t)task_status_pointer_list[i]);
+        println("");
     };
 
         printhex((uint32_t)&task_running);
@@ -88,7 +112,7 @@ void kernel_init()
 
     //systick init
 	interruptCtrl_mask_set(TIMER_INTERRUPT,0x1);
-	prescaler_set(TIMER_PRESCALER,3 - 1);
+	prescaler_set(TIMER_PRESCALER,9 - 1);
 	timer_limit_set(TIMER_A,9000 - 1);
 	timer_autoreload_en(TIMER_A);
 
@@ -134,30 +158,26 @@ static inline uint32_t systick_cnt_get()
 
 void task_delay(int ms)
 {
-    // #define DELAY_MS_C 452*2/KERNEL_TASK_NAME_MAXLEN
-
-// #define delay_ms(ms) delay(ms*452)
-    ms *= (452*2/task_cnt);
-// 4clk
-// volatile void delay(uint32_t loops){
-	while(ms--){
-		*(uint32_t*)(0xF000000c) = ~*(uint32_t*)(0xF000000c);
-	}
-// }
-    // uint32_t target = systick_cnt_get() + ms;
-    // while(systick_cnt_get() > target);
+// spin_lock();
+    ptask_running->next->status->delay_cnt = ms;
+// spin_unlock();
+    while(ptask_running->next->status->delay_cnt);
 }
 
-uint32_t kernel_task_init(char *name, void(*fun)(void))
+uint32_t kernel_task_init(const char *name, void(*fun)(void))
 {
     systick_cnt++;
+
+    print("task_cnt:");
+    printhex(task_cnt);
+    println("");
 
     if(task_cnt == KERNEL_MAX_TASK_COUNT)
         return -1;
 
     task_t *ptask           = task_pointer_list[task_cnt];
     context_t *ctx          = &task_ctx_list[task_cnt];
-    task_status_t *status   = &task_status_list[task_cnt];
+    task_status_t *status   = task_status_pointer_list[task_cnt];
 
     ptask->next = NULL;
     ptask->ctx = ctx;
@@ -167,24 +187,26 @@ uint32_t kernel_task_init(char *name, void(*fun)(void))
     status->delay_cnt    = 0         ;
     status->status       = TASK_STATUS_WAIT  ;
 
-    status->name = name;
+    memcpy(&status->name,name,10);
 
     ctx->sp  = (uint32_t)&task_stack[task_cnt][KERNEL_TASK_STACK_MAX_SIZE];
     ctx->epc = (uint32_t)fun;
 
-    print("addr:");
-    printhex((uint32_t)ptask);
-    print("|");
-    printhex((uint32_t)ctx);
-    print("|");
-    printhex((uint32_t)status);
-    print("fun:");
-    printhex((uint32_t)fun);
-    print("|");
-    printhex((uint32_t)ctx->epc);
-    print("\n");
+    // print("addr:");
+    // printhex((uint32_t)ptask);
+    // print("|");
+    // printhex((uint32_t)ctx);
+    // print("|");
+    // printhex((uint32_t)status);
+    // print("fun:");
+    // printhex((uint32_t)fun);
+    // print("|");
+    // printhex((uint32_t)ctx->epc);
+    // print("\n");
 
     kernel_task_queue_add(&task_queue_ready,ptask);
+
+    kernel_task_status_log();
 
     task_cnt++;
     return 0;
@@ -278,6 +300,8 @@ static void kernel_systick_trap_handler()
             );
         }
     }
+
+    kernel_task_status_log();
 
     asm volatile ("csrw mscratch, %0" : : "r" (&temp_ctx));
     if(task_running.next)

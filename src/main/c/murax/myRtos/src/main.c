@@ -22,13 +22,13 @@ _TASK_FUN led_blind()
 	println("enter led_blind");
 	while(1)
 	{
-		// task_delay(250);
 		GPIO_A->OUTPUT = ~GPIO_A->OUTPUT;
-		delay_ms(250);
+		// delay_ms(250);
+		task_delay(250);
     // kernel_task_status_log();
 		println("led_blind delay 500");
-		delay_ms(250);
-		// task_delay(250);
+		// delay_ms(250);
+		task_delay(250);
 	}
 }
 
@@ -38,8 +38,8 @@ _TASK_FUN uart_tx()
 	while(1)
 	{
 		println("uart task delay 1000ms");
-		// task_delay(100000);
-		delay_ms(1000);//30s
+		task_delay(1000);
+		// delay_ms(1000);//30s
 		// delay(270000*10);
 	}
 }
@@ -53,7 +53,7 @@ void main() {
 
 	kernel_task_init("uart",uart_tx);
 
-	kernel_task_init("led",led_blind);
+	kernel_task_init("led_t",led_blind);
 
 	kernel_start();
 
