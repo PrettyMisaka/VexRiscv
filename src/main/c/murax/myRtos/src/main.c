@@ -57,13 +57,13 @@ _TASK_FUN hdmi_flash()
 	volatile uint32_t color = 0xffffffff;
 	while(1)
 	{
-		uint32_t *p = (uint32_t*)(HDMI_FB_BASE+(20+(20*HDMI_H)<<2));
-		for(int i = 0; i < 680; i++){
-			for(int j = 0; j < 1240; j++){
+		uint32_t *p = (uint32_t*)(HDMI_FB_BASE+(100+(100*HDMI_H)<<2));
+		for(int i = 0; i < 520; i++){
+			for(int j = 0; j < 1080; j++){
 				*p = color;
 				p++;
 			}
-			p += (HDMI_H - 1240);
+			p += (HDMI_H - 1080);
 		}			
 
 		switch (cnt%5)
@@ -84,7 +84,7 @@ _TASK_FUN hdmi_flash()
 		println("");
 		cnt++;
 
-		// task_delay(1000);
+		// task_delay(90);
 	}
 }
 

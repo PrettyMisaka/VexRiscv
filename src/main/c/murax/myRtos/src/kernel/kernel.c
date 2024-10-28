@@ -8,7 +8,13 @@
 #include "../uart.h"
 #include "time.h"
 
-#define KERNEL_INFO_LOG 0
+#define KERNEL_DEBUG 0
+
+#if KERNEL_DEBUG
+    #define KERNEL_INFO_LOG 1
+#else
+    #define KERNEL_INFO_LOG 0
+#endif
 
 static uint8_t __attribute__((aligned(16))) task_stack[KERNEL_MAX_TASK_COUNT][KERNEL_TASK_STACK_MAX_SIZE];
 
@@ -79,7 +85,7 @@ void kernel_task_status_log()
         println("NULL");
 
     p = &task_queue_delay;
-    print("delay task:");
+    println("delay task:");
     if(p->next){
         do{
             kernel_task_info_log(p->next);
@@ -112,7 +118,12 @@ void kernel_init()
 
     //systick init
 	interruptCtrl_mask_set(TIMER_INTERRUPT,0x1);
+
+#if KERNEL_DEBUG
+	prescaler_set(TIMER_PRESCALER,9000 - 1);
+#else
 	prescaler_set(TIMER_PRESCALER,9 - 1);
+#endif
 	timer_limit_set(TIMER_A,9000 - 1);
 	timer_autoreload_en(TIMER_A);
 
@@ -244,38 +255,38 @@ static void kernel_systick_trap_handler()
         task_empty_mepc = ptemp_ctx->epc;
     }else{
         memcpy(task_running.next->ctx,&temp_ctx,sizeof(context_t));
-        // task_status_t *pstatus = task_running.next->status;
-        // if(pstatus->delay_cnt > 0){
-        //     pstatus->status = TASK_STATUS_WAIT;
-        //     kernel_task_queue_mv(
-        //         &task_queue_delay,
-        //         &task_running,
-        //         task_running.next
-        //     );
-        // }
+        task_status_t *pstatus = task_running.next->status;
+        if(pstatus->delay_cnt > 0){
+            // pstatus->status = TASK_STATUS_WAIT;
+            kernel_task_queue_mv(
+                &task_queue_delay,
+                &task_running,
+                task_running.next
+            );
+        }
     }
 
-    for(int i = 0; i < KERNEL_MAX_TASK_COUNT; i++)
-    {
-        task_status_t *p = task_list[i].status;
-        if(p->delay_cnt > 0)
-            p->delay_cnt--;
-    }
-
-    // task_t *_task_queue_delay = &task_queue_delay;
-    // _task_queue_delay = _task_queue_delay->next;
-    // while(_task_queue_delay != NULL){
-    //     task_t *_current_task = _task_queue_delay;
-    //     task_status_t *status = _current_task->status;
-    //     status->delay_cnt--;
-    //     _task_queue_delay = _task_queue_delay->next;
-    //     if(status->delay_cnt == 0)
-    //         kernel_task_queue_mv(
-    //             &task_queue_ready,
-    //             &task_queue_delay,
-    //             _current_task
-    //         );
+    // for(int i = 0; i < KERNEL_MAX_TASK_COUNT; i++)
+    // {
+    //     task_status_t *p = task_list[i].status;
+    //     if(p->delay_cnt > 0)
+    //         p->delay_cnt--;
     // }
+
+    task_t *_task_queue_delay = &task_queue_delay;
+    _task_queue_delay = _task_queue_delay->next;
+    while(_task_queue_delay != NULL){
+        task_t *_current_task = _task_queue_delay;
+        task_status_t *status = _current_task->status;
+        status->delay_cnt--;
+        _task_queue_delay = _task_queue_delay->next;
+        if(status->delay_cnt == 0)
+            kernel_task_queue_mv(
+                &task_queue_ready,
+                &task_queue_delay,
+                _current_task
+            );
+    }
 
     if (ptask_running->next == NULL){
         if(task_queue_ready.next){
