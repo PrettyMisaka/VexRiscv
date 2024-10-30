@@ -286,7 +286,7 @@ case class Murax(config : MuraxConfig) extends Component{
     mainBusMapping += ram.io.bus -> (0x80000000l, onChipRamSize)
     
     val rom = new MuraxPipelinedMemoryBusRom(
-      onChipRomSize = 1 kB,
+      onChipRomSize = 2 kB,
       onChipRamBinFile = "src/main/c/murax/bootrom/build/bootrom.bin",
       pipelinedMemoryBusConfig = pipelinedMemoryBusConfig,
       bigEndian = bigEndianDBus

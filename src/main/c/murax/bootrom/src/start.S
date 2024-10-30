@@ -1,4 +1,3 @@
-.global crtStart
 .global bootrom_start
 .global main
 .global trap_handler
@@ -57,10 +56,19 @@ trap_entry:
   addi sp,sp,16*4
   mret
   .text
-crtStart:
+
+.global crtStartRam
+crtStartRam:
   //long jump to allow crtInit to be anywhere
   //do it always in 12 bytes
   lui x10,       %hi(0x80000000)
   addi x10, x10,  %lo(0x80000000)
   jalr x1,x10
-  nop
+
+.global crtStartDDR3
+crtStartDDR3:
+  //long jump to allow crtInit to be anywhere
+  //do it always in 12 bytes
+  lui x10,       %hi(0x40030000)
+  addi x10, x10,  %lo(0x40030000)
+  jalr x1,x10

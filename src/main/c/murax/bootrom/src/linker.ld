@@ -4,7 +4,7 @@ OUTPUT_ARCH(riscv)
 ENTRY(bootrom_start)
 
 MEMORY {
-  BootROM (rx) : ORIGIN = 0x10000000, LENGTH = 1K /* 0xF0080000 Adjust size as needed */
+  BootROM (rx) : ORIGIN = 0x10000000, LENGTH = 2K /* 0xF0080000 Adjust size as needed */
   Stack (rwx) : ORIGIN = 0x80001F00, LENGTH = 256 /* 定义栈的大小为 256 字节，根据需要调整 */
 }
 

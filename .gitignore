@@ -57,6 +57,7 @@ tmp/
 src/main/c/murax/hello_world/build/*
 src/main/c/murax/bootrom/build/*
 src/main/c/murax/myRtos/build/*
+src/main/c/murax/ddr3_test/build/*
 
 !src/main/c/murax/hello_world/build/hello_world.hex
 !src/main/c/murax/bootrom/build/bootrom.bin

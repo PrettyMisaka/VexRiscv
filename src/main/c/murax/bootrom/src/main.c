@@ -1,7 +1,8 @@
 #include "uart.h"
 #include "gpio.h"
 
-extern void crtStart(void);
+extern void crtStartRam(void);
+extern void crtStartDDR3(void);
 extern void trap_entry(void);
 
 void trap_handler(void)
@@ -29,8 +30,9 @@ void trap_handler(void)
             i = 4;
             switch (status){
             case 0:
-                if(*puart_rx_val & 0x80000000){
-                    burning_base_addr = (uint32_t *)(0x80000000 | (*puart_rx_val & ~0xF0000000));
+                uint32_t addr_head = *puart_rx_val & 0xF0000000;
+                if(addr_head){
+                    burning_base_addr = (uint32_t *)(*puart_rx_val);
                     status = 1;
                 }else
                     printu32(0xfffffff8);
@@ -71,13 +73,12 @@ void trap_handler(void)
 
 void main()
 {
-    GPIO_A->OUTPUT_ENABLE = 0x0;
+    GPIO_A->OUTPUT_ENABLE = 0xF0;
     print("[boot]");
     if(GPIO_A->INPUT & 0x80000000){
-        print("enter the burning mode!\n");
+        print("enter the burning mode!\r\n");
 
         GPIO_A->OUTPUT = 0xF0;
-        GPIO_A->OUTPUT_ENABLE = 0xF0;
 
         asm volatile("csrw mtvec, %0" : : "r" ((uint32_t)trap_entry));
 
@@ -86,12 +87,18 @@ void main()
 
         while(1);
     }
-    print("enter the ram!\n");
     
     GPIO_A->OUTPUT = 0x00;
-    GPIO_A->OUTPUT_ENABLE = 0xF0;
 
-    asm volatile("csrw mtvec, %0" : : "r" ((uint32_t)0x80000020));
 
-    crtStart();
+    print("enter the ");
+    if(GPIO_A->INPUT & 0x40000000){
+        print("ram!\r\n");
+        asm volatile("csrw mtvec, %0" : : "r" ((uint32_t)0x80000020));
+        crtStartRam();
+    } else{
+        print("dram!\r\n");
+        asm volatile("csrw mtvec, %0" : : "r" ((uint32_t)0x40030020));
+        crtStartDDR3();
+    }
 }
