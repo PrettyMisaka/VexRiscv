@@ -1,9 +1,11 @@
 //#include "stddefs.h"
 // #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdarg.h>
 
 #include "murax.h"
+#include "uart_ring/uart_ring.h"
 extern void trap_entry(void);
 	
 	#define HDMI_H 1280l
@@ -15,16 +17,6 @@ extern void trap_entry(void);
 
 void hdmi_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color){
 	uint32_t *p = (uint32_t*)(HDMI_FB_BASE+(x+(y*HDMI_H)<<2));
-
-	// print("p:0x");
-	// printhex((uint32_t)p);
-	// print(",x:");
-	// printhex(x);
-	// print(",y:");
-	// printhex(y);
-	// print(",y*HDMI_H:0x");
-	// printhex(y*HDMI_H);
-
 	for(int i = 0; i < h; i++){
 		for(int j = 0; j < w; j++){
 			*p = color;
@@ -32,10 +24,6 @@ void hdmi_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color){
 		}
 		p += (HDMI_H - w);
 	}
-	
-	// print(",_p:0x");
-	// printhex((uint32_t)p);
-	// println("");
 }
 
 void delay(uint32_t loops){
@@ -90,6 +78,58 @@ void _timer_init(){
     println("timer init success!");
 }
 
+static uartRingParameterTypedef uartRingParameter, *puartRingParameter = &uartRingParameter;
+
+char cmd_helloworld_str[21];
+void cmd_helloworld(){
+	println("hello world!");
+	char *p = ringGetString(0);
+	memcpy(cmd_helloworld_str,p,20);
+	cmd_helloworld_str[21] = 0;
+	println(cmd_helloworld_str);
+	// print(" to ");
+	// p = ringGetString(1);
+	// memcpy(cmd_helloworld_str,p,20);
+	// println(cmd_helloworld_str);
+}
+
+
+static uint8_t cmd_ddr3_test_flag = 0;
+void cmd_ddr3_test(){
+	cmd_ddr3_test_flag = 1;
+}
+
+static uint8_t cmd_ddr3_mem_log_flag = 0;
+static uint32_t cmd_ddr3_mem_log_begin_addr = 0x40030000;
+void cmd_ddr3_mem_log(){
+	cmd_ddr3_mem_log_flag = 1;
+	char *p = ringGetString(0);
+	uint32_t _tmp = 0;
+	for(int i = 0; i < 8; i++){
+		uint8_t u8;
+		if(*p>='0'&&*p<='9'){
+			u8 = (*p - '0');
+		}else if(*p>='a'&&*p<='f'){
+			u8 = (*p - 'a' + 10);
+		}else{
+			return;
+		}
+		_tmp += u8 << ((7-i)*4);
+		p++;
+	}
+	cmd_ddr3_mem_log_begin_addr = _tmp;
+}
+
+static uint8_t cmd_hdmi_flush_flag = 0;
+void cmd_hdmi_flush(){
+	cmd_hdmi_flush_flag = 1;
+}
+
+static uint8_t cmd_help_flag = 0;
+void cmd_help(){
+	cmd_help_flag = 1;
+}
+
 void main() {
 	asm volatile("csrw mtvec, %0" : : "r" ((uint32_t)trap_entry));
     println("hello world tang primer 20k!");
@@ -99,176 +139,150 @@ void main() {
     const int nleds = 4;
 	const int nloops = 100000;
 	_timer_init();
+	ringBuff_Total_Init(puartRingParameter);
+	ring_state ret = cmdBuff_Push( puartRingParameter,"helloworld STRING\n",cmd_helloworld);
+	cmdBuff_Push( puartRingParameter,"memory-test\r\n",cmd_ddr3_test);
+	cmdBuff_Push( puartRingParameter,"memory-log STRING\n",cmd_ddr3_mem_log);
+	cmdBuff_Push( puartRingParameter,"hdmi-flush\r\n",cmd_hdmi_flush);
+	cmdBuff_Push( puartRingParameter,"help\r\n",cmd_help);
 
-	for( uint32_t *ddr_base = (uint32_t*)0x40000000, wr_val = (uint32_t)ddr_base; (uint32_t)ddr_base < 0x40000080;){
-		*ddr_base = wr_val;
-		wr_val += 4;
-		ddr_base += 1;
-	}
-
-	// get_ddr3_ram_data(0x40000000, 0x40000080);
-	// //flash
-	// *(uint32_t*)0x40002000 = 0x40002000; //2 1
-	// ddr3_reg_log();
-	// *(uint32_t*)0x40003000 = 0x40003000; //3 2 1
-	// ddr3_reg_log();
-	// *(uint32_t*)0x40004000 = 0x40004000; //4 3 2
-	// ddr3_reg_log();
-	// *(uint32_t*)0x40005000 = 0x40005000; //5 4 3
-	// ddr3_reg_log();
-
-	// get_ddr3_ram_data(0x40000000, 0x40000020);
-	// get_ddr3_ram_data(0x40000080, 0x400000a0);
-
-	// println("write data to 0x40000200...");
-	// *(uint32_t*)0x40000200 = 0x40000200; //2 1
-	// *(uint32_t*)0x40000204 = 0x40000204; //2 1
-	// *(uint32_t*)0x40000208 = 0x40000208; //2 1
-	// *(uint32_t*)0x4000020c = 0x4000020c; //2 1
-	// ddr3_reg_log();
-	// get_ddr3_ram_data(0x40000200, 0x40000220);
-	// println("write data to 0x400003F0...");
-	// *(uint32_t*)0x400003F0 = 0x400003F0; //2 1
-	// *(uint32_t*)0x400003F4 = 0x400003F4; //2 1
-	// *(uint32_t*)0x400003F8 = 0x400003F8; //2 1
-	// *(uint32_t*)0x400003Fc = 0x400003Fc; //2 1
-	// ddr3_reg_log();
-	// get_ddr3_ram_data(0x400003F0, 0x40000400);
-	//flash
-	// *(uint32_t*)0x40002000 = 0x40002000; //2 1
-	// *(uint32_t*)0x40003000 = 0x40003000; //3 2 1
-	// *(uint32_t*)0x40004000 = 0x40004000; //4 3 2
-	// *(uint32_t*)0x40005000 = 0x40005000; //5 4 3
-
-	// get_ddr3_ram_data(0x40000200, 0x40000220);
-	// while(1);
-
-	// print("read 0x40000000:");
-	// printhex(*(uint32_t*)0x40000000); //4
-	// print("read 0x40000004:");
-	// printhex(*(uint32_t*)0x40000004); //4
-	// print("read 0x40000008:");
-	// printhex(*(uint32_t*)0x40000008); //4
-	// print("read 0x4000000c:");
-	// printhex(*(uint32_t*)0x4000000c); //4
-	// println("");
-	// ddr3_reg_log();
-
-	// while(1);
-
-	volatile uint32_t* ddr_base;
-	volatile uint32_t wr_val = 0x40000000;
-	*(uint32_t*)0x48001000 = 0xffffffff; //2 1
 	int i = 0;
-	delay(270000);
+	*(uint32_t*)0x48001000 = 0xffffffff; //2 1
+	systick_delayms(100);
 	println("done");
-	goto lab_flash;
-	// for(; (uint32_t)ddr_base < 0x41000000;){
-	//0x40000280 可以正常读写
-	//0x40000400 0x40000380有问题
-	//0x40000300 乱码 跑飞 对0x400007FX读写会使0x4000000X出现问题
-	//屏蔽0x0x40000000~0x40030000 
-	for( ddr_base = (uint32_t*)0x40030000,wr_val = (uint32_t)0x0; (uint32_t)ddr_base < 0x40031000;){
-		if(((uint32_t)ddr_base & 0x1F) == 0x00000000){
-			print("0x");
-			printhex((uint32_t)ddr_base);
-			print(":");
-		}
-		// *ddr_base = wr_val;
-		printhex(*ddr_base);
-		print(" ");
-		if(((uint32_t)ddr_base & 0x1F) == 0x1C){
-			println("");
-		}
-		// *ddr_base = (((uint32_t)ddr_base & 0xfffffff0) == 0x400007F0)?wr_val|0x80000000:wr_val;
-		ddr_base += 1;
-		if(((uint32_t)ddr_base & 0x00FFFFFF) == 0x00000000){
-			print(" ");
-			printhex((uint32_t)ddr_base);
-		}
-	}
-	while(1);
-	for( ddr_base = (uint32_t*)0x40030000,wr_val = (uint32_t)ddr_base; (uint32_t)ddr_base < 0x48000000;){
-		*ddr_base = wr_val;
-		// *ddr_base = (((uint32_t)ddr_base & 0xfffffff0) == 0x400007F0)?wr_val|0x80000000:wr_val;
-		wr_val += 4;
-		ddr_base += 1;
-		if(((uint32_t)ddr_base & 0x00FFFFFF) == 0x00000000){
-			print(" ");
-			printhex((uint32_t)ddr_base);
-		}
-	}
-	print("ddr3 module write done! checking \r\n");
-	for( ddr_base = (uint32_t*)0x40030000,wr_val = (uint32_t)ddr_base; (uint32_t)ddr_base < 0x48000000;){
-		// *ddr_base = 0x1f;
-		if(*ddr_base != wr_val){
-			println("<<<");
-			get_ddr3_ram_data((uint32_t)ddr_base, (uint32_t)ddr_base + 0x20);
-			break;
-		}
-		wr_val += 4;
-		ddr_base += 1;
-		if(((uint32_t)ddr_base & 0x00FFFFFF) == 0x00000000){
-			print(" ");
-			printhex((uint32_t)ddr_base);
-		}
-	}
-	if((uint32_t)ddr_base == 0x48000000)
-		print("ddr3 test 0x40000000 ~ 0x48000000 success!\r\n");
-
-	// get_ddr3_ram_data(0x40000000, 0x40000100);
-	// get_ddr3_ram_data(0x40000100, 0x40000200);
-	// get_ddr3_ram_data(0x40000800, 0x40000840);
-	// get_ddr3_ram_data(0x40000900, 0x40000920);
-	// get_ddr3_ram_data(0x40001000, 0x40001020);
-	// get_ddr3_ram_data(0x40001100, 0x40001120);
-	// get_ddr3_ram_data(0x40101000, 0x40101080);
-	// get_ddr3_ram_data(0x43101000, 0x43101080);
-
-	// while(1);
-lab_flash:
-
-	println("clear hdmi out");
-	for( ddr_base = (uint32_t*)0x47c00000; (uint32_t)ddr_base < 0x48000000 ;){
-		*ddr_base = 0xff888888;
-		// *ddr_base = (((uint32_t)ddr_base & 0xfffffff0) == 0x400007F0)?wr_val|0x80000000:wr_val;
-		ddr_base += 1;
-	}
-	println("clear hdmi done!");
-	uint32_t x, y;
-	ddr_base = (uint32_t*)HDMI_FB_BASE;
-	uint32_t x_offset, y_offset;
-
-	volatile uint8_t cnt = 0;
-	volatile uint32_t color = 0xffffffff;
-
+	println("enter ringBuffHandleFun");
 	while(1){
-	for(x_offset = 0; x_offset < 4; x_offset++){
-		for(y_offset = 0; y_offset < 4; y_offset++){
-	// for(x_offset = 0; x_offset < 16; x_offset++){
-	// 	for(y_offset = 0; y_offset < 9; y_offset++){
-			
-			switch (cnt%5)
-			{
-			case 0: color = 0xffffffff; break;
-			case 1: color = 0xff000000; break;
-			case 2: color = 0xff0000ff; break;
-			case 3: color = 0xff00ff00; break;
-			case 4: color = 0xffff0000; break;
-			default:
-				break;
+		ringBuffHandleFun(puartRingParameter);
+		systick_delayms(50);
+		if(cmd_ddr3_test_flag){
+			cmd_ddr3_test_flag = 0;
+			volatile uint32_t* ddr_base;
+			volatile uint32_t wr_val = 0x40000000;
+			println("memory-test start!");
+
+			for( ddr_base = (uint32_t*)0x40030000,wr_val = (uint32_t)0; (uint32_t)ddr_base < 0x48000000;){
+				*ddr_base = wr_val;
+				// *ddr_base = (((uint32_t)ddr_base & 0xfffffff0) == 0x400007F0)?wr_val|0x80000000:wr_val;
+				ddr_base += 1;
+				if(((uint32_t)ddr_base & 0x00FFFFFF) == 0x00000000){
+					print(" ");
+					printhex((uint32_t)ddr_base);
+				}
 			}
+			println("");
+			println("set 0x40030000 ~ 0x48000000 val 0");
 
-			// hdmi_fill(x_offset*HDMI_H/4,y_offset*HDMI_W/4,HDMI_H/4,HDMI_W/4,color);
-			// hdmi_fill(x_offset*HDMI_BLOCK,y_offset*HDMI_BLOCK,HDMI_BLOCK,HDMI_BLOCK,color);
-			hdmi_fill(20,20,1240,680,color);
-
-			cnt++;
-			// delay(540000);
-			systick_delayms(50);
+			for( ddr_base = (uint32_t*)0x40030000,wr_val = (uint32_t)ddr_base; (uint32_t)ddr_base < 0x48000000;){
+				*ddr_base = wr_val;
+				// *ddr_base = (((uint32_t)ddr_base & 0xfffffff0) == 0x400007F0)?wr_val|0x80000000:wr_val;
+				wr_val += 4;
+				ddr_base += 1;
+				if(((uint32_t)ddr_base & 0x00FFFFFF) == 0x00000000){
+					print(" ");
+					printhex((uint32_t)ddr_base);
+				}
+			}
+			println("");
+			print("ddr3 module write done! checking \r\n");
+			for( ddr_base = (uint32_t*)0x40030000,wr_val = (uint32_t)ddr_base; (uint32_t)ddr_base < 0x48000000;){
+				// *ddr_base = 0x1f;
+				if(*ddr_base != wr_val){
+					println("<<<");
+					get_ddr3_ram_data((uint32_t)ddr_base, (uint32_t)ddr_base + 0x20);
+					break;
+				}
+				wr_val += 4;
+				ddr_base += 1;
+				if(((uint32_t)ddr_base & 0x00FFFFFF) == 0x00000000){
+					print(" ");
+					printhex((uint32_t)ddr_base);
+				}
+			}
+			println("");
+			if((uint32_t)ddr_base == 0x48000000)
+				print("ddr3 test 0x40000000 ~ 0x48000000 success!\r\n");
 		}
-	}
-	}
+		if(cmd_ddr3_mem_log_flag){
+			cmd_ddr3_mem_log_flag = 0;
+			volatile uint32_t* ddr_base;
+			uint32_t cnt = 0;
+			for( ddr_base = (uint32_t*)cmd_ddr3_mem_log_begin_addr; (uint32_t)ddr_base < cmd_ddr3_mem_log_begin_addr+0x1000;){
+				if((cnt & 0x7) == 0){
+					print("0x");
+					printhex((uint32_t)ddr_base);
+					print(":");
+				}
+				printhex(*ddr_base);
+				print(" ");
+				if((cnt & 0x7) == 0x7){
+					println("");
+				}
+				cnt++;
+				// *ddr_base = (((uint32_t)ddr_base & 0xfffffff0) == 0x400007F0)?wr_val|0x80000000:wr_val;
+				ddr_base += 1;
+			}
+		}
+		if(cmd_hdmi_flush_flag){
+			cmd_hdmi_flush_flag = 0;
+
+			volatile uint32_t* ddr_base;
+			volatile uint32_t wr_val = 0x40000000;
+
+			println("clear hdmi out");
+			for( ddr_base = (uint32_t*)0x47c00000; (uint32_t)ddr_base < 0x48000000 ;){
+				*ddr_base = 0xff888888;
+				// *ddr_base = (((uint32_t)ddr_base & 0xfffffff0) == 0x400007F0)?wr_val|0x80000000:wr_val;
+				ddr_base += 1;
+			}
+			println("clear hdmi done!");
+			uint32_t x, y;
+			ddr_base = (uint32_t*)HDMI_FB_BASE;
+			uint32_t x_offset, y_offset;
+
+			volatile uint8_t cnt = 0;
+			volatile uint32_t color = 0xffffffff;
+
+			// while(1){
+			for(x_offset = 0; x_offset < 4; x_offset++){
+				for(y_offset = 0; y_offset < 4; y_offset++){
+			// for(x_offset = 0; x_offset < 16; x_offset++){
+			// 	for(y_offset = 0; y_offset < 9; y_offset++){
+					
+					switch (cnt%5)
+					{
+					case 0: color = 0xffffffff; break;
+					case 1: color = 0xff000000; break;
+					case 2: color = 0xff0000ff; break;
+					case 3: color = 0xff00ff00; break;
+					case 4: color = 0xffff0000; break;
+					default:
+						break;
+					}
+
+					// hdmi_fill(x_offset*HDMI_H/4,y_offset*HDMI_W/4,HDMI_H/4,HDMI_W/4,color);
+					// hdmi_fill(x_offset*HDMI_BLOCK,y_offset*HDMI_BLOCK,HDMI_BLOCK,HDMI_BLOCK,color);
+					hdmi_fill(20,20,1240,680,color);
+
+					cnt++;
+					// delay(540000);
+					systick_delayms(50);
+				}
+			}
+			// }
+
+		}
+		if(cmd_help_flag){
+			cmd_help_flag = 0;
+			println(">cmd:");
+			for(int i = 0; i < puartRingParameter->cmdBuffLength; i++){
+				print("    ");
+				print(puartRingParameter->cmdBuffArr[i].cmd_String);
+				if(puartRingParameter->cmdBuffArr[i].dataTypeArr[0] != RING_DATATYPE_NULL){
+					println("");
+				}
+			}
+		}
+	};
 
 	while(1){
 		uint32_t *p = (uint32_t*)0x44000000;
@@ -303,6 +317,8 @@ lab_flash:
     }
 }
 
+static char ringBuffStr[RING_BUFF_LENGTH];
+
 void irqCallback(){
 
 	if(interruptCtrl_pendins_get(TIMER_INTERRUPT)){
@@ -318,33 +334,17 @@ void irqCallback(){
 
 	UART->STATUS &= ~0x2;
 
-	// uint32_t mcause;
-    // asm volatile ("csrr %0, mcause" : "=r" (mcause));
-	// print("mcause register value:0x");
-	// printhex(mcause);
-	// println(".");
-
-	print("uart status value:0x");
-	printhex(uart_statis);
-	println(".");
-
 	uint32_t rxbuf_len;
 
-	char rx_buf[17];
-	uint16_t i = 0;
-
 	do{
-		rx_buf[i] = UART->DATA;
+		ringBuff_Push(puartRingParameter,UART->DATA);
 
 		rxbuf_len = uart_readOccupancy(UART);
-
-		i++;
-
 	}while(rxbuf_len > 0);
 
-	rx_buf[i] = 0;
-
-	print(rx_buf);
+	// ringShowBuff(puartRingParameter,ringBuffStr);
+	// print("ring buff:");
+	// println(ringBuffStr);
 	
 	UART->STATUS |= 0x2;
 }

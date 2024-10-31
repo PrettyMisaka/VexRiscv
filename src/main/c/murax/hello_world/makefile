@@ -8,6 +8,7 @@ SRCS = 	$(wildcard src/*.c) 	\
 		$(wildcard src/*.S)		\
 		$(wildcard src/spi/*.c)  \
 		$(wildcard src/sd_ctl/*.c)  \
+		$(wildcard src/uart_ring/*.c)  \
 		$(wildcard src/interrupt/*.c)	
 
 OBJDIR = build
