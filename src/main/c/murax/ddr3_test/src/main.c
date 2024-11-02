@@ -2,6 +2,8 @@
 // #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
+#include "gImage_misaka_rgb8888.h"
 
 #include "murax.h"
 extern void trap_entry(void);
@@ -121,7 +123,7 @@ void main() {
 	volatile uint8_t cnt = 0;
 	volatile uint32_t color = 0xffffffff;
 
-	while(1){
+	// while(1){
 	for(x_offset = 0; x_offset < 4; x_offset++){
 		for(y_offset = 0; y_offset < 4; y_offset++){
 	// for(x_offset = 0; x_offset < 16; x_offset++){
@@ -147,20 +149,14 @@ void main() {
 			systick_delayms(50);
 		}
 	}
-	}
+	// }
 
-	while(1){
-		uint32_t *p = (uint32_t*)0x44000000;
-
-		for(int i = 0; i < HDMI_BLOCK; i++){
-			for(int j = 0; j < HDMI_BLOCK; j++){
-				*p = 0xff888888;
-				p++;
-			}
-			p += (HDMI_H - HDMI_BLOCK);
-		}
-
-			systick_delayms(100);
+	uint32_t *p = (uint32_t*)(HDMI_FB_BASE+(HDMI_H/4+(HDMI_W*HDMI_H/4)<<2));
+	uint8_t *img_p = &gImage_misaka_rgb8888[0];
+	for(uint32_t i = 0; i < 360; i++){
+		memcpy(p,img_p,2*HDMI_H);
+		p += HDMI_H;
+		img_p += 4*640;
 	}
 
 	sd_card_init();
