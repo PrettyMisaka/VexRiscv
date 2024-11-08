@@ -6,6 +6,11 @@
 
 #include "murax.h"
 #include "uart_ring/uart_ring.h"
+#include "sdcard/bsp_spi_sdcard.h"
+#include "sdcard/sdcard_test.h"
+#include "pff3a/pff.h"
+#include "pff3a/pff_user.h"
+
 extern void trap_entry(void);
 	
 	#define HDMI_H 1280l
@@ -130,12 +135,63 @@ void cmd_help(){
 	cmd_help_flag = 1;
 }
 
+static uint8_t cmd_ls_flag = 0;
+void cmd_ls(){
+	cmd_ls_flag = 1;
+}
+
+static uint8_t cmd_cd_flag = 0;
+static uint8_t cmd_cd_str[20];
+void cmd_cd(){
+	cmd_cd_flag = 1;
+	char *p = ringGetString(0);
+	int n = strlen(p);
+	if(p[n-1] == '\r'){
+		memcpy(cmd_cd_str,p,n-1);
+		cmd_cd_str[n-1] = 0;
+	}else{
+		memcpy(cmd_cd_str,p,n);
+		cmd_cd_str[n] = 0;
+	}
+}
+
+static uint8_t cmd_load_flag = 0;
+static uint8_t cmd_load_str[20];
+void cmd_load(){
+	cmd_load_flag = 1;
+	char *p = ringGetString(0);
+	int n = strlen(p);
+	if(p[n-1] == '\r'){
+		memcpy(cmd_load_str,p,n-1);
+		cmd_load_str[n-1] = 0;
+	}else{
+		memcpy(cmd_load_str,p,n);
+		cmd_load_str[n] = 0;
+	}
+}
+
+extern void crtStartDDR3(void);
+void cmd_start_ddr3(){
+	UART->STATUS &= ~0x2;
+	interruptCtrl_mask_set(TIMER_INTERRUPT,0x0);
+    println("enter the dram!");
+	asm volatile("csrw mtvec, %0" : : "r" ((uint32_t)0x40030020));
+	crtStartDDR3();
+}
+
+FRESULT sdret;                /* 文件操作结果 */
+FATFS fs;					  /* FatFs文件系统对象 */
+DIR dir;
+FILINFO dir_info;
+char current_path[30] = "/";
+char target_path[30] = "/";
+
 void main() {
 	asm volatile("csrw mtvec, %0" : : "r" ((uint32_t)trap_entry));
     println("hello world tang primer 20k!");
 	UART->STATUS |= 0x2;
     GPIO_A->OUTPUT_ENABLE = 0x0000000F;
-	GPIO_A->OUTPUT = 0x00000001;
+	GPIO_A->OUTPUT = 0x00000000;
     const int nleds = 4;
 	const int nloops = 100000;
 	_timer_init();
@@ -145,15 +201,31 @@ void main() {
 	cmdBuff_Push( puartRingParameter,"memory-log STRING\n",cmd_ddr3_mem_log);
 	cmdBuff_Push( puartRingParameter,"hdmi-flush\r\n",cmd_hdmi_flush);
 	cmdBuff_Push( puartRingParameter,"help\r\n",cmd_help);
+	cmdBuff_Push( puartRingParameter,"ls\r\n",cmd_ls);
+	cmdBuff_Push( puartRingParameter,"cd STRING\n",cmd_cd);
+	cmdBuff_Push( puartRingParameter,"load STRING\n",cmd_load);
+	cmdBuff_Push( puartRingParameter,"start-ddr3\r\n",cmd_start_ddr3);
 
 	int i = 0;
 	*(uint32_t*)0x48001000 = 0xffffffff; //2 1
-	systick_delayms(100);
+	// systick_delayms(100);
+	// sd_card_init();
 	println("done");
+
+	sdret = pf_mount(&fs);
+	if(sdret == FR_NO_FILESYSTEM){
+		println("FR_NO_FILESYSTEM");
+	}else if(sdret!=FR_OK){
+		println("FR_ERR");
+	}else{
+		println("pf_mount success!");
+	}
+
 	println("enter ringBuffHandleFun");
 	while(1){
 		ringBuffHandleFun(puartRingParameter);
 		systick_delayms(50);
+		GPIO_A->OUTPUT = ~GPIO_A->OUTPUT;
 		if(cmd_ddr3_test_flag){
 			cmd_ddr3_test_flag = 0;
 			volatile uint32_t* ddr_base;
@@ -282,39 +354,116 @@ void main() {
 				}
 			}
 		}
-	};
-
-	while(1){
-		uint32_t *p = (uint32_t*)0x44000000;
-
-		for(int i = 0; i < HDMI_BLOCK; i++){
-			for(int j = 0; j < HDMI_BLOCK; j++){
-				*p = 0xff888888;
-				p++;
+		if(cmd_ls_flag){
+			cmd_ls_flag = 0;
+			sdret = pf_opendir(&dir,current_path);
+			if(sdret != FR_OK){
+				print("opendir ");
+				print(current_path);
+				print(" err:");
+				printhex(sdret);
+				println("");
+			}else{
+				print(current_path);
+				println(":");
+				while(1){
+					sdret = pf_readdir(&dir,&dir_info);
+					if(sdret != FR_OK || dir_info.fname[0] == 0){
+						break;
+					}else{
+						print(dir_info.fname);
+						if (dir_info.fattrib & AM_DIR) {
+							print("/");
+						}
+						print(" ");
+					}
+				}
+				println("");
 			}
-			p += (HDMI_H - HDMI_BLOCK);
 		}
+		if(cmd_cd_flag){
+			cmd_cd_flag = 0;
+			int n = strlen(target_path);
+			if(strncmp(cmd_cd_str,"../",3)==0){
+				if(n == 1 && target_path[0] == '/')
+					goto lab_log_current_path;
 
-			systick_delayms(100);
-	}
+				do{
+					n--;
+				}while(target_path[n] != '/');
+				target_path[n] = 0;
 
-	sd_card_init();
+				if(n == 0){
+					target_path[n] = '/';
+					target_path[n+1] = 0;
+					n++;
+				}
 
-	*(uint32_t*)0x40002000 = 0x40002000; //2 1
-	*(uint32_t*)0x40003000 = 0x40003000; //3 2 1
-	*(uint32_t*)0x40004000 = 0x40004000; //4 3 2
-	*(uint32_t*)0x40005000 = 0x40005000; //5 4 3
+				strncpy(current_path,target_path,n+2);
+			}else{
+				int s_n = strlen(cmd_cd_str);
 
-    while(1){
-    	for(unsigned int i=0;i<nleds-1;i++){
-    		GPIO_A->OUTPUT = 1<<i;
-    		delay(nloops);
-    	}
-    	for(unsigned int i=0;i<nleds-1;i++){
-			GPIO_A->OUTPUT = (1<<(nleds-1))>>i;
-			delay(nloops);
+				if(n != 1 || target_path[0] != '/'){
+					target_path[n] = '/';
+					n++;
+				}
+
+				memcpy(&target_path[n],cmd_cd_str,s_n);
+				target_path[s_n + n] = 0;
+
+				sdret = pf_opendir(&dir,target_path);
+				if(sdret != FR_OK){
+					print("error path! code:");
+					printhex(sdret);
+					println("");
+					println(target_path);
+
+					strncpy(target_path,current_path,n+1);
+					continue;
+				}
+
+				strncpy(current_path,target_path,s_n+n+1);
+			}
+lab_log_current_path:
+			print("cd ");
+			println(current_path);
 		}
-    }
+		if(cmd_load_flag){
+			cmd_load_flag = 0;
+			int n = strlen(target_path);
+
+			if(n != 1 || target_path[0] != '/'){
+				target_path[n] = '/';
+				n++;
+			}
+
+			int s_n = strlen(cmd_load_str);
+			memcpy(&target_path[n],cmd_load_str,s_n);
+			target_path[s_n + n] = 0;
+
+			sdret = pf_open(target_path);
+			if(sdret != FR_OK){
+				print("error path! code:");
+				printhex(sdret);
+				println("");
+				println(target_path);
+
+				goto lab_load_restore_path;
+			}
+			print("open ");
+			print(target_path);
+			println(" success!");
+			pf_loadfile2dram();
+
+			*(uint32_t*)0x47ff1000 = 0xffffffff;
+			*(uint32_t*)0x47ff2000 = 0xffffffff;
+			*(uint32_t*)0x47ff3000 = 0xffffffff;
+			*(uint32_t*)0x47ff4000 = 0xffffffff;
+
+lab_load_restore_path:
+			strncpy(target_path,current_path,s_n+n+1);
+		}
+	};
 }
 
 static char ringBuffStr[RING_BUFF_LENGTH];

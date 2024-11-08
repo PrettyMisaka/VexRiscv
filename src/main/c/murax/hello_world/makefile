@@ -7,7 +7,8 @@ SRCS = 	$(wildcard src/*.c) 	\
 		$(wildcard src/*.cpp)  	\
 		$(wildcard src/*.S)		\
 		$(wildcard src/spi/*.c)  \
-		$(wildcard src/sd_ctl/*.c)  \
+		$(wildcard src/sdcard/*.c)  \
+		$(wildcard src/pff3a/*.c)  \
 		$(wildcard src/uart_ring/*.c)  \
 		$(wildcard src/interrupt/*.c)	
 

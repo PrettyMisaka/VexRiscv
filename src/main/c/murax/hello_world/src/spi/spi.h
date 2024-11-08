@@ -28,7 +28,7 @@ void spi_send_arr(Spi_Reg* reg, uint8_t *byte, int n);
 void spi_send_and_rx(Spi_Reg* reg, uint8_t byte);
 void spi_send_and_rx_arr(Spi_Reg* reg, uint8_t *byte, int n);
 
-int spi_read(Spi_Reg* reg, uint8_t *byte, uint16_t *len);
+uint8_t spi_read(Spi_Reg* reg);
 int spi_read_len(Spi_Reg* reg, uint8_t *byte, uint16_t len);
 
 void spi_cs_en(Spi_Reg* reg, uint8_t n);

@@ -96,3 +96,11 @@ ctors_done:
   call main
 infinitLoop:
   j infinitLoop
+
+.global crtStartDDR3
+crtStartDDR3:
+  //long jump to allow crtInit to be anywhere
+  //do it always in 12 bytes
+  lui x10,       %hi(0x40030000)
+  addi x10, x10,  %lo(0x40030000)
+  jalr x1,x10

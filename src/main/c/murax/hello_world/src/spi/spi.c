@@ -57,20 +57,20 @@ int spi_read_irq_pending_get(Spi_Reg* reg)
     return SPI_RX_IRQ_AVAILABLE ? 0:1;
 }
 
-int spi_read(Spi_Reg* reg, uint8_t *byte, uint16_t *len)
+uint8_t spi_read(Spi_Reg* reg)
 {
-    while(!SPI_RX_AVAILABLE);
-    uint32_t ret = reg->DATA;
-    *len = (ret & 0x7fff0000) >> 16;
-    *byte = (ret & 0x80000000) ? ret & 0xff : 0;
-    return ret & 0x80000000 ? 0:1;
+    uint32_t ret;
+    do{
+        ret = reg->DATA;
+    }while ((ret & 0x80000000) != 0x80000000);    
+    return ret & 0xff ;
 }
 
 int spi_read_len(Spi_Reg* reg, uint8_t *byte, uint16_t len)
 {
     uint16_t _len;
     for(int i = 0; i < len; i++){
-        spi_read(reg,&byte[i],&_len);
+        byte[i] = spi_read(reg);
     }
     return 0;
 }
