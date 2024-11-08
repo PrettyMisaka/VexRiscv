@@ -5,7 +5,7 @@ ENTRY(bootrom_start)
 
 MEMORY {
   BootROM (rx) : ORIGIN = 0x10000000, LENGTH = 2K /* 0xF0080000 Adjust size as needed */
-  Stack (rwx) : ORIGIN = 0x80001F00, LENGTH = 256 /* 定义栈的大小为 256 字节，根据需要调整 */
+  Stack (rwx) : ORIGIN = 0x10000700, LENGTH = 256 /* 定义栈的大小为 256 字节，根据需要调整 */
 }
 
 _stack_size = DEFINED(_stack_size) ? _stack_size : 256;

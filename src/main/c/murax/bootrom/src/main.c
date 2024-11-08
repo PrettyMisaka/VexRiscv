@@ -47,6 +47,8 @@ void trap_handler(void)
                     status = 0;
                     printu32(0xfffffff4);
                 }
+                printu32((uint32_t)burning_base_addr);
+                printu32((uint32_t)burning_len);
                 break;
             case 2:
                 *burning_base_addr = *puart_rx_val;
